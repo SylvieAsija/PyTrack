@@ -13,7 +13,7 @@ class GitRepository (object):
         self.gitdir = os.path.join(path, '.git')
         
         if not (force or os.path.isdir(self.gitdir)):
-            raise Exception('Not a Valid Git Repository ', path)
+            raise Exception(f'Not a Valid Git Repository {path}')
         
         self.conf = configparser.ConfigParser()
         cf = repo_file(self, 'config')
@@ -26,7 +26,7 @@ class GitRepository (object):
         if not force:
             vers = int(self.conf.get('core', 'repositoryformatversion'))
             if vers != 0:
-                raise Exception('Unsupported Repository Format Version ', vers)
+                raise Exception(f'Unsupported Repository Format Version {vers}')
 
 def repo_path(repo, *path):
     return os.path.join(repo.gitdir, *path)
@@ -42,7 +42,7 @@ def repo_dir(repo, *path, mkdir=False):
         if os.path.isdir(path):
             return path
         else:
-            raise Exception('Not a Valid Directory ', path)
+            raise Exception(f'Not a Valid Directory {path}')
     
     if mkdir:
         os.makedirs(path)
@@ -55,11 +55,12 @@ def repo_create(path):
     
     if os.path.exists(repo.worktree):
         if not os.path.isdir(repo.worktree):
-            raise Exception(path, ' is Not a Directory')
-        if os.path.exists(repo.gitdir):
-            raise Exception(path, ' is Not Empty')
+            raise Exception(f'{path} is Not a Directory')
+        if os.path.exists(repo.gitdir) and os.listdir(repo.gitdir):
+            raise Exception(f'{path} is Not Empty')
     else:
         os.makedirs(repo.worktree)
+
         
     assert repo_dir(repo, 'branches', mkdir=True)
     assert repo_dir(repo, 'objects', mkdir=True)
@@ -91,7 +92,7 @@ def repo_default_config():
 def repo_find(path="", required=True):
     path = os.path.realpath(path)
     
-    if os.path.isdir(os.path.join(path, ".git")):
+    if os.path.isdir(os.path.join(f"{path}.git")):
         return GitRepository(path)
 
     parent = os.path.realpath(os.path.join(path, ".."))
