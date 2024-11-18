@@ -1,8 +1,8 @@
+import collections
 import hashlib
 import os
 import zlib
 from git_repository import repo_file
-
 
 class GitObject(object):
     
@@ -68,3 +68,78 @@ def object_write(obj, repo=None):
 
 def object_find(repo, name, fmt=None, follow=True):
     return name
+
+class GitBlob(GitObject):
+    fmt = b'blob'
+    
+    def serialize(self):
+        return self.blobdata
+    
+    def deserialize(self, data):
+        self.blobdata = data
+        
+class GitCommit(GitObject):
+    fmt = b'commit'
+    
+    def serialize(self, data):
+        return kvlm_serialize(self.kvlm)
+    
+    def deserialize(self, data):
+        self.kvlm = kvlm_parse(data)
+        
+    def init(self):
+        self.kvlm = dict()
+
+def kvlm_parse(raw, start=0, dct=None):
+    if not dct:
+        dct = collections.OrderedDict()
+    
+    space = raw.find(b' ', start)
+    newline = raw.find(b'\n', start)
+
+    if space < 0 or newline < space:
+        assert newline == start
+        dct[None] = raw[start + 1:]
+        return dct
+    
+    key = raw[start:space]
+    end = start
+    while True:
+        end = raw.find(b'\n', end + 1)
+        if raw[end + 1] != ord(' '):
+            break
+    
+    value = raw[space + 1:end].replace(b'\n ', b'\n')
+    
+    if key in dct:
+        if type(dct[key] == list):
+            dct[key].append(value)
+        else:
+            dct[key] = [dct[key], value]
+    
+    return kvlm_parse(raw, start=end + 1, dct=dct)
+
+def kvlm_serialize(kvlm):
+    ret = b''
+    
+    for k in kvlm.keys():
+        if k == None:
+            continue
+        
+        val = kvlm[k]
+        if type(val) != list:
+            val = [val]
+        
+        for v in val:
+            ret += k + b' ' + (v.replace(b'\n', b'\n ')) + b'\n'
+
+    ret += b'\n' + kvlm[None] + b'\n'
+    
+    return ret
+
+class GitTree(GitObject):
+    pass
+
+
+class GitTag(GitObject):
+    pass

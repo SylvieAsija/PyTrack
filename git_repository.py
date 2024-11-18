@@ -2,7 +2,7 @@ import configparser
 import os
 
 
-class GitRepository (object):
+class GitRepository(object):
     
     worktree = None
     gitdir = None
@@ -90,9 +90,9 @@ def repo_default_config():
     return ret
 
 def repo_find(path="", required=True):
-    path = os.path.realpath(path)
     
-    if os.path.isdir(os.path.join(f"{path}.git")):
+    path = os.path.realpath(path)
+    if os.path.isdir(os.path.join(path, ".git")):
         return GitRepository(path)
 
     parent = os.path.realpath(os.path.join(path, ".."))
