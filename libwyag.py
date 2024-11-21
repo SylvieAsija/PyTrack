@@ -38,6 +38,7 @@ argps = argsubparsers.add_parser('checkout', help='Checkout a commit')
 argsp.add_argument('commit', help='The commit or tree to checkout')
 argsp.add_argument('path', help='The empty directory to checkout on')
 
+argsp = argsubparsers.add_parser('show-ref', help='List references')
 
 def main(argv=sys.argv[1:]):
     args = argparser.parse_args(argv)
@@ -54,7 +55,7 @@ def main(argv=sys.argv[1:]):
         case 'ls-tree'      : cmd_ls_tree(args)
         # case 'rev-parse'    : cmd_rev_parse(args)
         # case 'rm'           : cmd_rm(args)
-        # case 'show-ref'     : cmd_show_ref(args)
+        case 'show-ref'     : cmd_show_ref(args)
         # case 'status'       : cmd_status(args)
         # case 'tag'          : cmd_tag(args)
         case _              : print('Invalid Command')
@@ -162,3 +163,15 @@ def tree_checkout(repo, tree, path):
         elif obj.fmt == b'blob':
             with open(dest, 'wb') as f:
                 f.write(obj.blobdata)
+
+def cmd_show_ref(args):
+    repo = git_repository.repo_find()
+    refs = git_object.ref_list(repo)
+    show_ref(repo, refs, prefix='refs')
+    
+def show_ref(repo, refs, with_hash=True, prefix=''):
+    for k, v in refs.items():
+        if type(v) == str:
+            print(f'{v + ' ' if with_hash else ''}{prefix + '/' if prefix else ''}{k}')
+        else:
+            show_ref(repo, v, with_hash=with_hash, prefix=f'{prefix}{'/' if prefix else ''}{k}')
