@@ -1,6 +1,7 @@
 import collections
 import hashlib
 import os
+import re
 import zlib
 from git_repository import repo_file, repo_dir
 
@@ -67,8 +68,35 @@ def object_write(obj, repo=None):
     return sha
 
 def object_find(repo, name, fmt=None, follow=True):
-    return name
+    sha = object_resolve(repo, name)
+    
+    if not sha:
+        raise Exception(f'No such reference {name}')
 
+    if len(sha) > 1:
+        raise Exception(f'Ambiguous reference {name}: Candidates are:\n - {sha}')
+    
+    sha = sha[0]
+    
+    if not fmt:
+        return sha
+    
+    while True:
+        obj = object_read(repo, sha)
+        
+        if obj.fmt == fmt:
+            return sha
+        
+        if not follow:
+            return None
+        
+        if obj.fmt == b'tag':
+            sha = obj.kvlm[b'object'].decode('ascii')
+        elif obj.fmt == b'commit' and fmt == b'tree':
+            sha = obj.kvlm[b'tree'].decode('ascii')
+        else:
+            return None
+    
 class GitBlob(GitObject):
     fmt = b'blob'
     
@@ -231,3 +259,33 @@ def ref_list(repo, path=None):
             ret[f] = ref_resolve(repo, can)
     
     return ret
+
+def object_resolve(repo, name):
+    candidates = list()
+    hashRE = re.compile(r'^[0-9A-Fa-f]{4,40}$')
+    
+    if not name.strip():
+        return None
+    
+    if name == 'HEAD':
+        return [ref_resolve(repo, 'HEAD')]
+    
+    if hashRE.match(name):
+        name = name.lower()
+        prefix = name[0:2]
+        path = repo_dir(repo, 'objects', prefix, mkdir=False)
+        if path:
+            rem = name[2:]
+            for f in os.listdir(path):
+                if f.startswith(rem):
+                    candidates.append(prefix + f)
+    
+    as_tag = ref_resolve(repo, 'refs/tags/' + name)
+    if as_tag:
+        candidates.append(as_tag)
+    
+    as_branch = ref_resolve(repo, 'refs/heads/' + name)
+    if as_branch:
+        candidates.append(as_branch)
+        
+    return candidates

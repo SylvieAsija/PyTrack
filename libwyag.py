@@ -45,6 +45,10 @@ argsp.add_argument('-a', action='store_true', dest='create_tag_object')
 argsp.add_argument('name', nargs='?', help='The name of the tag')
 argsp.add_argument('object', default='HEAD', nargs='?', help='The object the tag points to')
 
+argsp = argsubparsers.add_parser('rev-parse', help='Parse revision identifiers')
+argsp.add_argument('--wyag-type', metavar='type', dest='type', choices=['blob', 'commit','tag','tree'], default=None, help='Specify the expected type')
+argsp.add_argument('name', help='The name to parse')
+
 def main(argv=sys.argv[1:]):
     args = argparser.parse_args(argv)
     match args.command:
@@ -58,7 +62,7 @@ def main(argv=sys.argv[1:]):
         case 'log'          : cmd_log(args)
         # case 'ls-files'     : cmd_ls_files(args)
         case 'ls-tree'      : cmd_ls_tree(args)
-        # case 'rev-parse'    : cmd_rev_parse(args)
+        case 'rev-parse'    : cmd_rev_parse(args)
         # case 'rm'           : cmd_rm(args)
         case 'show-ref'     : cmd_show_ref(args)
         # case 'status'       : cmd_status(args)
@@ -145,7 +149,7 @@ def cmd_checkout(args):
     obj = git_object.object_read(repo, git_object.object_find(repo, args.commit))
     
     if obj.fmt == b'commit':
-        obj = git_object.object_read(repo, obj.kvlm[b'tree'].decode('ascee'))
+        obj = git_object.object_read(repo, obj.kvlm[b'tree'].decode('ascii'))
         
     if os.path.exists(args.path):
         if not os.path.isdir(args.path):
@@ -211,3 +215,13 @@ def tag_create(repo, name, ref, create_tag_object=False):
 def ref_create(repo, ref_name, sha):
     with open(git_repository.repo_file(repo, 'refs/' + ref_name), 'w') as fp:
         fp.write(sha + '\n')
+
+def cmd_rev_parse(args):
+    if args.type:
+        fmt = args.type.encode()
+    else:
+        fmt = None
+        
+    repo = git_repository.repo_find()
+    
+    print(git_object.object_find(repo, args.name, fmt, follow=True))
