@@ -201,7 +201,7 @@ class GitTree(GitObject):
 
 
 class GitTag(GitObject):
-    pass
+    fmt = b'tag'
 
 def ref_resolve(repo, ref):
     path = repo_file(repo, ref)
